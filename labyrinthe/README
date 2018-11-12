@@ -1,0 +1,25 @@
+# README
+#
+#   Auteur : MFD        Date: 12/11/2018
+#
+# Le projet actuel implémente le jeu du labyrinthe en mode multi-joueurs
+# et client-serveur.
+#
+# Il comprend les fichiers suivants :
+#   - serveur.py    :   le code principal du serveur
+#   - client.py     :   le code principal du client, essentiellement composé 
+#                       d'un thread émetteur et d'un thread récepteur
+#   - labyrinthe.py :   la classe labyrinthe comprenant les fonctionnalités du jeu côté serveur
+#   - carte.py      :   la classe Carte qui sert d'intermédiaire entre un fichier texte
+#                       et un 
+#   - robot.py      :   la classe Robot
+#
+#   - le package obstacle composé de :
+#           - obstacle.py   : la classe mère Obstacle
+#           - mur.py        :  la classe Mur héritée d'Obstacle
+#           - porte.py      : la classe Porte héritée d'Obstacle
+#           - sortie.py     : la classe Sortie héritée d'Obstacle
+#           - libre.py      : la classe Libre héritée d'Obstacle
+#
+#   - test_labyrinthe.py    : les tests unitaires vérifiant le bon fonctionnement 
+#                           du jeu
