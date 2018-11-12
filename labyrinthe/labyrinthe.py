@@ -54,20 +54,28 @@ class Labyrinthe:
 
             self.grille[obstacle.x, obstacle.y] = obstacle
 
-    def ajouter_robot(self,num_robot,cases_libres):
-        # Choisir une position de façon aléatoire pour le nouveau robot dans la liste des cases libres
-        objet = random.choice(cases_libres)
-        # Le numéro du joueur va devenir le symbole de son robot
-        robot = Robot (objet.x, objet.y, str(num_robot))
+    def ajouter_robot_xy(self,num_robot,x,y):
+        """ Ajoute un robot à des coordonnées x,y précisées 
+        son numéro + 1 va devenir son symbole """
+        robot = Robot (x, y, str(num_robot+1))
         self.grille[robot.x, robot.y] = robot
-        cases_libres.remove(objet)
         self.robot.append(robot)
 
+    def ajouter_robot(self,num_robot,cases_libres):
+        """ Choisir une position de façon aléatoire pour le nouveau robot 
+        dans la liste des cases libres, et place le robot à cette position """
+        objet = random.choice(cases_libres)
+        self.ajouter_robot_xy(num_robot,objet.x,objet.y) 
+        cases_libres.remove(objet) 
+
     def retirer_robot(self, num_robot):
-        robot = self.robot[num_robot]
-        objet = Libre(robot.x, robot.y)
-        self.grille[robot.x, robot.y] = objet
-        del self.robot[num_robot]
+        """ Retire un robot de la liste des robots et de la grille """
+        if num_robot >= 0:
+            robot = self.robot[num_robot]
+            del self.grille[robot.x,robot.y]
+            del self.robot[num_robot]
+        else:
+            raise ValueError("le no de robot 'num_robot' est incorrect. On attend une valeur >=O ")
 
     def nom_robot(self,num_robot):
         return self.robot[num_robot].get_symbole()
@@ -240,8 +248,7 @@ def creer_labyrinthe_depuis_chaine(chaine):
         elif lettre.lower() in symboles:
             classe = symboles[lettre.lower()]
             objet = classe(x, y)
-            #if type(objet) is Robot:
-            #        raise ValueError("les robots sont définis aléatoirement")
+            
             if type(objet) is Libre:
                 cases_libres.append(objet)
             else:

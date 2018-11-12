@@ -4,6 +4,8 @@
 
 Exécutez-le avec Python pour lancer le jeu.
 
+Avant le code principal, vous trouverez diverses fonctions d'envoi et de réception 
+de messages vers un ou des clients
 """
 import socket
 import select
@@ -13,12 +15,16 @@ import time
 from carte import Carte
 
 def creer_chaine_labyrinthe_et_envoyer(clients_connectes):
+    """ Crée une chaine à partir du labyrinthe et l'envoie à tous les clients connectés """
     chaine = labyrinthe.creer_chaine()
     chaine = chaine.encode()
     for client in clients_connectes:
         client.send(chaine)
 
 def envoyer_message_bienvenue(nom_joueur,num_joueur,clients_connectes):
+    """ Envoie un message de bienvenue au nouveau joueur qui vient de se connecter (identifé par son nom et son numéro)
+    et avertit les autres joueurs (connectés précédemment) de son arrivée 
+    """
     msg_a_envoyer = "Bienvenue, joueur " + nom_joueur + "\nNotez bien votre numéro, il vous identifie dans le labyrinthe\n"
     msg_a_envoyer += "Appuyez sur c pour commencer la partie\n"
     msg_a_envoyer = msg_a_envoyer.encode()
@@ -32,17 +38,23 @@ def envoyer_message_bienvenue(nom_joueur,num_joueur,clients_connectes):
             clients_connectes[i].send(msg_a_envoyer) 
 
 def envoyer_message_abandon_joueur(nom_joueur,clients_connectes):
+    """ Avertit les autres joueurs que le joueur nommé 'nom_joueur' a quitté la partie """
     msg_a_envoyer = "le joueur " + nom_joueur + " a quitté le jeu.\n "
     msg_a_envoyer = msg_a_envoyer.encode()
     for client in clients_connectes:
         client.send(msg_a_envoyer)
 
 def envoyer_message_commence(clients_connectes):
+    """ Avertit tous les joueurs que le jeu commence """
     msg_a_envoyer = b"c"
     for client in clients_connectes:
         client.send(msg_a_envoyer)
 
 def envoyer_message_joueur_suivant(num_joueur,nom_joueur,clients_connectes):
+    """ Avertit le joueur nommé 'nom_joueur' ayant pour numéro 'num_joueur' dans la liste 'clients-connectes'
+    que c'est son tour de jouer.
+    Et donne cette information aux autres joueurs connectés
+    """
     msg_a_envoyer = "Joueur : " + nom_joueur + " , c'est à vous de jouer\n"
     msg_a_envoyer1 = "C'est le tour du joueur : " + nom_joueur + "\n"
     msg_a_envoyer = msg_a_envoyer.encode()
@@ -55,9 +67,13 @@ def envoyer_message_joueur_suivant(num_joueur,nom_joueur,clients_connectes):
             clients_connectes[i].send(msg_a_envoyer1)
             
 def envoyer_message_gagne(num_joueur,nb_joueurs,clients_connectes):
-    msg_a_envoyer = b"gagne"                            
+    """ Avertit le joueur identifié par son numéro 'num_joueur' dans la liste 'clients_connectes'
+    qu'il a gagné
+    et informe les autres joueurs que le jeu est terminé de ce fait
+    """
+    msg_a_envoyer = b"g"                            
     # On annonce la fin de la partie aux autres joueurs
-    msg_a_envoyer1 = b"fin" 
+    msg_a_envoyer1 = b"f" 
     for i  in range(nb_joueurs):
         if i == num_joueur:
             clients_connectes[i].send(msg_a_envoyer)
@@ -65,10 +81,17 @@ def envoyer_message_gagne(num_joueur,nb_joueurs,clients_connectes):
             clients_connectes[i].send(msg_a_envoyer1)
 
 def recevoir_message(nom_joueur,client):
+    """ Reçoit un message de la part du client identifié par son socket et son nom
+    et retourne la chaine de caractère décodée
+    """
     msg_recu = client.recv(1024)
     msg_recu = msg_recu.decode()
     print("\nReçu {0} de la part du joueur {1}\n".format(msg_recu, nom_joueur))
     return msg_recu
+
+############################################################################
+# CODE PRINCIPAL du SERVEUR                                                #
+############################################################################
 
 # On charge les cartes existantes
 cartes = []
@@ -116,9 +139,10 @@ connexion_principale.listen(5)
 print("Le serveur écoute à présent sur le port {}".format(port))
 print("On attend les clients.")
 
+TEMPS_MAX_ATTENTE_COUP = 30 #timeout en secondes pour l'attente d'un coup
 serveur_lance = True
 clients_connectes = []
-temps_attente = 1.0
+temps_attendu = 0
 nb_joueurs = 0
 num_joueur = 0
 num_joueur_max = 0
@@ -137,24 +161,24 @@ while serveur_lance:
             # On ajoute le socket connecté à la liste des clients
             clients_connectes.append(connexion_avec_client)
             nb_joueurs += 1
-            num_joueur_max += 1
             # On ajoute aléatoirement un robot dans le labyrinthe pour le nouveau joueur
             labyrinthe.ajouter_robot(num_joueur_max,cartes[choix-1].cases_libres)
-            nom_joueur = labyrinthe.nom_robot(num_joueur)
+            nom_joueur = labyrinthe.nom_robot(num_joueur_max)
             print("Un joueur s'est connecté : ", nom_joueur)
+            num_joueur_max += 1
             # on lui souhaite la bienvenue et on informe les autres joueurs de son arrivée
             envoyer_message_bienvenue(nom_joueur,nb_joueurs-1,clients_connectes)
             # on envoie le labyrinthe actualisé à tous les joueurs
             creer_chaine_labyrinthe_et_envoyer(clients_connectes)
             
         # Maintenant, on écoute la liste des clients connectés à lire
-        # On attend 0.5s maximum pour que plusieurs joueurs puissent entrer  
+        # On attend 1s maximum pour que plusieurs joueurs puissent entrer  
         clients_a_lire = []
         # On enferme l'appel à select.select dans un bloc try pour lever une exception
         # dans le cas oà la liste des clients connectés serait vide
         try:
             clients_a_lire, wlist, xlist = select.select(clients_connectes,
-                [], [], temps_attente)
+                [], [], 1)
         except select.error:
             pass
         else:
@@ -188,6 +212,9 @@ while serveur_lance:
                     continue
                 
     else: # si la partie est commencée
+        # On met en place un système pour que les joueurs jouent chacun leur tour un coup
+        # avec toutefois une issue si un joueur ne répond pas au bout de TEMPS_MAX_ATTENTE_COUP
+        # Dans ce cas de timeout, il perd son tour
         clients_a_lire = []
         try:
             clients_a_lire, wlist, xlist = select.select(clients_connectes,
@@ -198,21 +225,27 @@ while serveur_lance:
             # On cherche le joueur dont c'est le tour dans les clients à lire
             if clients_a_lire:             
                 if clients_connectes[num_joueur] not in clients_a_lire:                   
-                    # le joueur attendu n'a pas joué, on lui laisse une deuxième chance
-                    # après quoi il perd son tour
+                    # le joueur attendu n'a pas joué, on patiente 1 seconde avant de réessayer
                     if nb_tours_restants >= 0:
+                        time.sleep(1)
                         nb_tours_restants -= 1
-                        temps_attente = 1 * nb_tours_restants
-                        print("On attend le coup du joueur : {0} pendant {1} secondes max".format(nom_joueur, temps_attente))  
+                        temps_attendu += 1
+                          
+                    elif temps_attendu < TEMPS_MAX_ATTENTE_COUP:
+                        
+                        print("On attend le coup du joueur : ",nom_joueur)
+                        nb_tours_restants = 15
+                        envoyer_message_joueur_suivant(num_joueur,nom_joueur,clients_connectes)
                     else:
                         print("Le joueur {} n'a pas réagi dans les temps, il perd son tour".format(nom_joueur))
                         num_joueur = (num_joueur + 1) % nb_joueurs
                         nom_joueur = labyrinthe.nom_robot(num_joueur)
-                        print("On attend le coup du joueur : ",nom_joueur)
-                        nb_tours_restants = 30
-                        envoyer_message_joueur_suivant(num_joueur,nom_joueur,clients_connectes)
-                        temps_attente = 0.5
+                        print("On attend le coup du joueur : {0}".format(nom_joueur))
+                        nb_tours_restants = 15
+                        temps_attendu = 0
                 else:
+                    nb_tours_restants = 15
+                    temps_attendu = 0
                     nom_joueur = labyrinthe.nom_robot(num_joueur)
                     client = clients_connectes[num_joueur]
                     msg_recu = recevoir_message(nom_joueur,client)
@@ -253,7 +286,7 @@ while serveur_lance:
                             envoyer_message_joueur_suivant(num_joueur,nom_joueur,clients_connectes)
                           
 # On attend un peu avant de fermer les connexions, pour ne pas perturber les clients         
-time.sleep(1)
+time.sleep(5)
 print("Fermeture des connexions")
 for client in clients_connectes:
     client.close()

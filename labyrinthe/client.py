@@ -21,7 +21,7 @@ class Recepteur(Thread):
         self.termine = True
 
     def run(self):
-        """Code à exécuter pendant l'exécution du thread."""
+        """Code à exécuter pendant l'exécution du thread Recepteur."""
         while not self.termine:
             try:
                 msg_recu = self.socket.recv(1024)
@@ -38,12 +38,12 @@ class Recepteur(Thread):
                 self.emetteur.demarre_jeu()
             elif msg_recu == "q":
                 self.termine = True
-            elif msg_recu == "gagne":
+            elif msg_recu == "g":
                 print("Félicitations ! Vous avez gagné !!!")
                 self.termine = True
                 self.emetteur.stop()
                 
-            elif msg_recu == "fin":
+            elif msg_recu == "f":
                 print("Désolé, vous avez perdu...")
                 self.termine = True
                 self.emetteur.stop()
@@ -79,9 +79,15 @@ class Emetteur(Thread):
         self.termine = False
 
     def serveur_pret(self):
+        """ Méthode appelée entre autres par le Recepteur pour indiquer qu'un
+        message est arrivé du serveur et qu'il est prêt à recevoir des commandes
+        """
         self.pret = True
 
     def demarre_jeu(self):
+        """ Méthode appelée entre autres par le Recepteur pour indiquer que le serveur 
+        a lancé la partie 
+        """
         self.pret = True
         self.demarre = True
         print("La partie est démarrée")
@@ -100,11 +106,12 @@ class Emetteur(Thread):
             print("Problème de connexion avec le serveur")
 
     def run(self):
-        """Code à exécuter pendant l'exécution du thread."""
+        """Code à exécuter pendant l'exécution du thread Emetteur."""
         
         msg_a_envoyer = b""
         while not self.termine:
-            if not self.pret:
+            # On attend un signal de la part du récepteur avant de demander un coup au joueur
+            if not self.pret:   
                 time.sleep(0.5)
                 continue
             coup = input("> ")
@@ -137,7 +144,7 @@ class Emetteur(Thread):
             elif coup[0].lower() in "nseo":
                 lettre = coup[0].lower()
                 msg_a_envoyer = lettre.encode()
-                # On va essayer de convertir le déplacement
+                # On va essayer de convertir le déplacement en coups d'une case
                 coup = coup[1:]
                 if coup == "":
                     nombre = 1
@@ -147,7 +154,6 @@ class Emetteur(Thread):
                     except ValueError:
                         print("Nombre invalide : {}".format(coup))
                         continue
-                    #msg_a_envoyer = msg_a_envoyer.encode()
                 while nombre >= 1:
                     # On envoie le message
                     self.envoyer_message(msg_a_envoyer)
